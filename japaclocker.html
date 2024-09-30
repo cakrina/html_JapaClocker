@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japa Tally Counter with Round & Mantra List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+	.container {
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            height: 90%;
+        }
+
+        .mantras, .rounds {
+            display: flex;
+            flex: 1;
+            border: 1px solid #ccc;
+        }
+
+        .log {
+            flex: 1;
+            display: flex;
+            justify-content: flex-start;
+            align-items: top;
+            padding-right: 10px;
+        }
+        .count {
+            flex: 1;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            font-size: 80px;
+        }
+
+        ul {
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* Media query for landscape mode */
+        @media (orientation: landscape) {
+            .container {
+                flex-direction: row;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="clickableArea">
+        <audio id="clickSound" src="data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAAFGADS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS//////////////////////////////////////////////////////////////////8AAAA5TEFNRTMuMTAwAs0AAAAAAAAAABSAJAVAQgAAgAAABRh3I7GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//vAxAAAFx2HTLSWAB9IxWXXN8ADCAAE5zRo0aObcOuRhcEwTFaOmtr198OBIBuDcRyef+ws6mnYhgTADAmWzgAcA4jn7+LFlLtr17/0pSaLFjmtr/v9FiyksGAliWJZmv/FhgJYlk8/fnJ2lKTMzMzLCwwMDBZ1KUWLFiw4MBLEsnn/sHBgJAjiOJZmv9hYYCWZn780pRYvXr168zP38Xr169evXrzMSBIMFnXXrzMSCYYHiynbdYsWLFlHBgAAADv/AAAw9/+Af+YYAAEAAAAABhp+YCOGrqQCfAQFosGAyRukOAU4y51SKkp4iqYfJA4ga8iatU0ktyBpCQEDA+wKBjPIaMYBw2i3jAAgEIEi7IpTKQg/mbnucIDppPZIzmEwcDgUYnGzAZl2VMTYxOOvj42IVDSxpMpsIwiFgqDzBgUTcHQhlcUqfV/TH5dMTrIyYszVi4NIpwweiRIDGHxyYqEicQcFhYupyhYDg4ExiGV5GVmYYKEBr1LGQzgZCKRoc1BygAQmBIAUyTIQHNoYXCC6nRa7Lca0dBxxMXAsw6KzG5ENCj408gTBBmMvhsWaY6BggNIA2IqlLzBUVGQxAFw7En6oZqNU0Sl7WTARWNxsQyKHjCZaMyrg1eJTLqQMniAxmCDFYWMPEUwWCnTfaMAIBMZaWxxWd/X/q4d+rZq2ZTKp4xOzDJA1MAgsxoDzJiDNKIEycIzBwnMnEMxoPQSFiqQwEfUyEvy6yBBFNORkTAnKiqsT0yuExZ0oK+VS6tjrLK7S/lljowQGTAYGDAUmMOgIxKDB0EqymEgKvFWIwADx4KAgAoAkelVUxACCf/////4LitLNwNGJmX0bpPK8sEV2mUkqj1//////+m1l9Wlpf+tqmjVW9W3CJkA7AEQGIsTeW0gpcW8lImpLXGFOwoaffVat5olCUtgXHy72SSTbkkmxHRk+SQan0JJEkST1MCQARZL/+zDEHYPXKejuHPYACAAANIAAAASwNhGMnmSSTUMEQChSptZk59kxMT2I6EIGylMJRk9pyYmNzkxPcatq21rW+Zmcs9b5mZm1rW/WVv1rWbWtMzMzM721rNrayttta9OW/GnrbWbLuy1vmdmd6Zma1/a1rOWtNrWnZm05M702tWctb9ZW/Va7WctabW/ay0u4KeKVTEFNRTMuMTA=" preload="auto"></audio>
+        <!-- Rounds container -->
+        <div class="rounds">
+            <div class="log">
+                <ul id="roundList"></ul>
+            </div>
+            <div class="count">
+                <h2 id="roundDisplay">0</h2>
+            </div>
+        </div>
+
+        <!-- Mantras container -->
+        <div class="mantras" id="mantrasArea">
+            <div class="log">
+                <ul id="mantraList"></ul>
+            </div>
+            <div class="count">
+                <h2 id="mantraDisplay">0</h2>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let clickCount = 0;   // Total number of clicks
+        let roundCount = 0;   // Completed rounds
+        let mantraCount = 0;  // Mantras in current round
+        let lastClickTime = null; // Time of the last click
+        let lastRoundTime = null; // Time of the last completed round
+        const mala = 108;     // Number of mantras per round
+        const mantraLog = []; // Array to store mantra time logs
+        const roundLog = [];  // Array to store round time logs
+        const clickSound = new Audio("data:audio/mp3;base64,[]");
+        // Handle each click
+        document.getElementById('clickableArea').addEventListener('click', handleClick);
+	function handleClick() {
+	    document.getElementById('clickSound').play();
+            if (clickCount === 0 && lastClickTime === null) {
+                lastClickTime = new Date();
+            } else {
+                clickCount++;
+                roundCount = Math.floor((clickCount - 1) / mala);
+                mantraCount = clickCount - (roundCount * mala);
+                
+
+                // Capture the time between clicks
+                currentTime = new Date();
+                mantraTime = ((currentTime - lastClickTime) / 1000).toFixed(1); // Time difference in seconds (ss.s)
+                logMantra(roundCount, mantraCount, mantraTime);
+                lastClickTime = currentTime;
+            }
+
+            // process round
+            if (mantraCount === 1) {
+                if (roundCount === 0) {
+                    lastRoundTime = currentTime;
+                } else {
+                    const roundTime = Math.floor((currentTime - lastRoundTime)/15000); // Time in quaters of a minute - 15secs
+                    console.log(roundTime);
+                    const roundedTime = convertToQuarterMinutes(roundTime);
+                    logRound(roundCount - 1, roundedTime);
+                    lastRoundTime = currentTime; // Always update the last round time
+                }
+            
+            }
+	    updateDisplay();
+        }
+
+        // Convert time to quarter minutes
+        function convertToQuarterMinutes(quaters) {
+            const wholeMinutes = Math.floor(quaters / 4);
+            const fraction = (quaters % 4);
+            let quaterStr = "";
+
+            if (fraction === 1) quaterStr = "¼";
+            else if (fraction === 2) quaterStr = "½";
+            else if (fraction === 3) quaterStr = "¾";
+
+            return `${wholeMinutes}${quaterStr ? ` ${quaterStr}` : ""}`;
+        }
+
+        // Reset counter
+        function resetCounter() {
+            clickCount = 0;
+            roundCount = 0;
+            mantraCount = 0;
+            lastClickTime = null;
+            lastRoundTime = null;
+            mantraLog.length = 0; // Clear the log
+            roundLog.length = 0;
+            document.getElementById('mantraList').innerHTML = ""; // Clear the displayed mantra list
+            document.getElementById('roundList').innerHTML = "";  // Clear the displayed round list
+            updateDisplay();
+        }
+
+        // Update the displayed round and mantra count
+        function updateDisplay() {
+            document.getElementById('roundDisplay').textContent = roundCount;
+            document.getElementById('mantraDisplay').textContent = mantraCount;
+        }
+
+        // Log and display the mantra time difference
+        function logMantra(round, mantra, time) {
+            mantraLog.push({ round, mantra, time });
+
+            const listItem = document.createElement('li');
+            listItem.textContent = `${round + 1}/${mantra} - ${time}s`;
+
+            // Prepend the new item to the top of the list
+            const mantraList = document.getElementById('mantraList');
+            mantraList.insertBefore(listItem, mantraList.firstChild); // Insert new entry at the top
+        }
+
+        // Log and display the time between rounds
+        function logRound(round, time) {
+            roundLog.push({ round, time });
+
+            const listItem = document.createElement('li');
+            listItem.textContent = `${round + 1} - ${time}m`;
+
+            // Prepend the new item to the top of the list
+            const roundList = document.getElementById('roundList');
+            roundList.insertBefore(listItem, roundList.firstChild); // Insert new entry at the top
+        }
+    </script>
+</body>
+</html>
