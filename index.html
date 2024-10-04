@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JapaClocker</title>    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #E8E8E8;
+            color: #282828;  
+            user-select: none;          
+        }
+
+    	.container {
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            height: 90%;
+            border: 1px solid #383838;
+        }
+
+        .mantras, .rounds {
+            display: flex;
+            flex: 1;
+            border: 1px solid #383838;
+            background-image: url('peackock.png'); /* Image file in the same folder */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .log {
+            flex: .35;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: top;
+            height: 340px;
+        }
+        .count {
+            flex: .65;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            font-size: 60px;
+        }
+        .label {
+            background-color: lightgrey; /* Background for labels */
+            font-weight: bold; /* Make label text bold */
+            text-align: center; /* Center align label text */
+            width: 100%;
+            box-sizing: border-box;
+            padding: 4px;
+            font-size: 18px;
+        }
+       
+        ul {
+            height: 70%;
+            padding: 10px;
+            overflow-y: auto;
+            list-style-type: none;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #101010;
+                color: grey;
+            }
+
+            .label {
+                background-color: #181818; /* Background for labels */
+            }
+            .mantras, .rounds {
+            background-image: url('peackock_dark.png'); /* Image file in the same folder */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        }
+
+        /* Media query for landscape mode */
+        @media (orientation: landscape) {
+            .container {
+                flex-direction: row;
+            }
+        }
+
+    </style>
+
+</head>
+<body>
+<div class="container" id="clickableArea">
+    <audio id="clickSound" src="click.mp3" preload="auto"></audio>
+    <audio id="roundSound" src="round.mp3" preload="auto"></audio>
+    <!-- Rounds container -->
+    <div class="rounds">
+        <div class="log">
+            <div class="label">Time</div>
+            <ul id="roundList"></ul>
+        </div>
+        <div class="count">
+            <div class="label">Rounds</div>
+            <h2 id="roundDisplay">0</h2>
+        </div>
+    </div>
+
+    <!-- Mantras container -->
+    <div class="mantras" id="mantrasArea">
+        <div class="log">
+            <div class="label">Time</div>
+            <ul id="mantraList"></ul>
+        </div>
+        <div class="count">
+            <div class="label">Mantras</div>
+            <h2 id="mantraDisplay">0</h2>
+        </div>
+    </div>
+</div>
+
+<script>
+    let clickCount = localStorage.getItem('clickCount') ? +localStorage.getItem('clickCount') : 0;
+    let lastClickTime = localStorage.getItem('lastClickTime') ? +localStorage.getItem('lastClickTime') : Date.now();
+    let lastRoundTime = localStorage.getItem('lastRoundTime') ? +localStorage.getItem('lastRoundTime') : Date.now();
+    let pauseTimeSum = localStorage.getItem('pauseTimeSum') ? +localStorage.getItem('pauseTimeSum') : 0;
+    console.log("got pauseTimeSum",pauseTimeSum)
+    let isPause = localStorage.getItem('isPause') === 'true'; // Boolean value, convert from string
+    let hasPause = localStorage.getItem('hasPause') === 'true'; // Boolean value, convert from string
+    let clickTimer = null;
+    const longPressDuration = 1200; // Define long press duration (800ms)
+    let startTime = Date.now();
+    const mala = 108;     // Number of mantras per round
+    const pause = 30000;
+    
+    window.onload = function() {
+        loadLists();
+        setCount();
+        updateDisplay(); // Call updateDisplay on page load
+    };
+
+    // Handle each click
+    document.getElementById('clickableArea').addEventListener('click', handleClick);
+
+    //Handle long press Rounds
+    document.getElementById('roundDisplay').addEventListener('touchstart', function(event) {
+        clickTimer = setTimeout(onLongPress, longPressDuration); // Start long press timer
+    });
+    document.getElementById('roundDisplay').addEventListener('touchend', function(event) {
+    clearTimeout(clickTimer); // Clear long press timer on mouse up (regular click)
+    });
+
+    //Handle long click Rounds
+        document.getElementById('roundDisplay').addEventListener('mousedown', function(event) {
+        clickTimer = setTimeout(onLongPress, longPressDuration); // Start long press timer
+    });
+    document.getElementById('roundDisplay').addEventListener('mouseup', function(event) {
+    clearTimeout(clickTimer); // Clear long press timer on mouse up (regular click)
+    });
+
+    function loadLists() {
+        const savedMantraList = localStorage.getItem('mantraList');
+        if (savedMantraList) {
+            document.getElementById('mantraList').innerHTML = savedMantraList;
+        }
+        const savedRoundList = localStorage.getItem('roundList');
+        if (savedRoundList) {
+            document.getElementById('roundList').innerHTML = savedRoundList;
+        }
+    }
+
+    // Function to handle long press event
+    function onLongPress() {
+        const enteredRounds = prompt("Enter number of rounds:", roundCount); // Prompt for rounds
+        if (enteredRounds !== null && !isNaN(enteredRounds)) {
+            reset();
+            clickCount = parseInt(enteredRounds * mala)+1; // Update round count with entered value            
+            setCount();
+            clickCount -=1;
+            updateDisplay(); // Update the display with new value
+            saveState();
+        }
+    }
+
+    //Handle long press Mantras
+    document.getElementById('mantraDisplay').addEventListener('touchstart', function(event) {
+        clickTimer = setTimeout(resetEvent, longPressDuration); // Start long press timer
+    });
+    document.getElementById('mantraDisplay').addEventListener('touchend', function(event) {
+    clearTimeout(clickTimer); // Clear long press timer on mouse up (regular click)
+    });    
+        
+    //Handle long click Mantras
+    document.getElementById('mantraDisplay').addEventListener('mousedown', function(event) {
+        clickTimer = setTimeout(resetEvent, longPressDuration); // Start long press timer
+    });
+    /* document.getElementById('mantraDisplay').addEventListener('mouseup', function(event) {
+    clearTimeout(clickTimer); // Clear long press timer on mouse up (regular click)
+    });*/
+
+    document.getElementById('clickableArea').addEventListener('mouseup', function(event) {
+        clearTimeout(clickTimer); // Clear long press timer on mouse up (regular click)
+    });
+
+
+
+    
+    function handleClick() {
+        const currentTime = Date.now();
+        lastClickTime = lastClickTime === 0 ? currentTime : lastClickTime;
+        const clickTime = currentTime - lastClickTime;
+        if (clickTime < 500) {
+            return; // Ignore the click if it's too fast
+        }
+        document.getElementById('clickSound').play();
+        if (lastClickTime === 0) {
+            lastClickTime = currentTime;
+            lastRoundTime = currentTime;
+            pauseTimeSum = currentTime - startTime;
+            return;
+        }
+
+        if (clickTime > pause) { 
+            // Pause time > 30 seconds, no click added, only wake up
+            pauseTimeSum += clickTime; // Add pause time to pauseTimeSum
+            lastClickTime = currentTime;
+            isPause = true;
+            hasPause = true;
+            return;
+        }
+        clickCount++;
+        setCount()
+        
+        // Capture the time between clicks
+        mantraTime = (clickTime / 1000).toFixed(1); // Time difference in seconds (ss.s)
+        logMantra(roundCount, mantraCount, mantraTime, isPause);
+        lastClickTime = currentTime;
+        setTimeout(() => {isPause = false;}, 50);
+
+        // process round
+        if (mantraCount === 1 && roundCount !== 0) {
+            const roundTime = Math.floor((currentTime - lastRoundTime - pauseTimeSum)/1000); 
+            const roundedTime = convertToQuarterMinutes(roundTime);
+            logRound(roundCount - 1, roundedTime, hasPause);
+            document.getElementById('roundSound').play();
+            lastRoundTime = currentTime; // Always update the last round time
+            setTimeout(() => { hasPause = false; }, 50);
+            pauseTimeSum = 0;
+
+        }
+        updateDisplay();
+        saveState();
+    }
+    function setCount() {
+        roundCount = clickCount !== 0 ? Math.floor((clickCount - 1) / mala) : 0;
+        mantraCount = clickCount - (roundCount * mala);
+    }
+
+    // Convert time to quarter minutes
+    function convertToQuarterMinutes(seconds) {
+        const wholeMinutes = Math.floor(seconds / 60);
+        const fraction = (seconds % 60);
+        return `${wholeMinutes}m${fraction ? ` ${fraction}` : ""}s`;
+    }
+
+
+    // Reset counter
+    function resetEvent() {
+        if (confirm('Do you want to reset the counter?')) {
+            reset();
+            roundCount = 0;
+            mantraCount = 0;
+            updateDisplay();
+            saveState();
+        }
+    }
+
+    function reset() {
+        currentTime = Date.now();
+        clickCount = 0;
+        startTime = currentTime;
+        lastClickTime = currentTime;
+        lastRoundTime = currentTime;
+        pauseTimeSum = 0;
+        isPause = false;
+        hasPause = false;
+
+        // Clear the displayed mantra and round lists
+        document.getElementById('mantraList').innerHTML = "";
+        document.getElementById('roundList').innerHTML = "";
+
+        // Clear the localStorage for mantra and round lists
+        localStorage.setItem('mantraList',"");
+        localStorage.setItem('roundList',"");
+    }
+
+
+    // Update the displayed round and mantra count
+    function updateDisplay() {
+        document.getElementById('roundDisplay').textContent = roundCount;
+        document.getElementById('mantraDisplay').textContent = mantraCount;
+    }
+
+
+    // Log and display the mantra time difference
+    function logMantra(round, mantra, time) {
+        // mantraLog.push({ round, mantra, time, isPause });
+
+        const listItem = document.createElement('li');
+        listItem.textContent = `${round + 1}/${mantra} - ${time}s`;
+
+        if (isPause) {
+            listItem.style.color = 'red';
+        }
+
+        // Prepend the new item to the top of the list
+        const mantraList = document.getElementById('mantraList');
+        mantraList.insertBefore(listItem, mantraList.firstChild); // Insert new entry at the top
+        localStorage.setItem('mantraList', mantraList.innerHTML);
+    }
+
+    // Log and display the time between rounds
+    function logRound(round, time, hasPause) {
+        // roundLog.push({ round, time });
+
+        const listItem = document.createElement('li');
+        listItem.textContent = `${round + 1} - ${time}`;
+	    if (hasPause) {
+            listItem.style.color = 'red';
+        }
+
+        // Prepend the new item to the top of the list
+        const roundList = document.getElementById('roundList');
+        roundList.insertBefore(listItem, roundList.firstChild); // Insert new entry at the top
+        localStorage.setItem('roundList', roundList.innerHTML);
+        
+    }
+
+    function saveState() {
+        localStorage.setItem('clickCount', clickCount);
+        console.log('lastClickTime', lastClickTime);
+        localStorage.setItem('lastClickTime', lastClickTime);
+        console.log('lastRoundTime', lastRoundTime);
+        localStorage.setItem('lastRoundTime', lastRoundTime);
+        console.log('pauseTimeSum', pauseTimeSum);
+        localStorage.setItem('pauseTimeSum', pauseTimeSum);
+        localStorage.setItem('isPause', isPause);
+        localStorage.setItem('hasPause', hasPause)
+        mantraList = document.getElementById('mantraList');
+        roundList = document.getElementById('roundList');
+        localStorage.setItem('mantraList', mantraList.innerHTML);
+        localStorage.setItem('roundList', roundList.innerHTML);
+    }
+
+    // Reload/Leave confirmation
+    window.addEventListener('beforeunload', function (event) {
+    const message = 'Are you sure you want to leave? It will reset the counter.';
+    event.preventDefault();
+    saveState()
+    event.returnValue = message; // Custom message for older browsers
+    return message; // Some modern browsers ignore the custom message, but this is required for it to trigger
+});
+</script>
+</body>
+</html>
